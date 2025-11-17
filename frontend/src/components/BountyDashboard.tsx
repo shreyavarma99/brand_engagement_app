@@ -5,9 +5,10 @@ interface BountyDashboardProps {
   bounties: Bounty[]
   onCreateBounty: (bounty: Omit<Bounty, 'id' | 'companyId'>) => void
   onBountyClick: (bounty: Bounty) => void
+  onFocusBounty?: (bounty: Bounty) => void
 }
 
-export default function BountyDashboard({ bounties, onCreateBounty, onBountyClick }: BountyDashboardProps) {
+export default function BountyDashboard({ bounties, onCreateBounty, onBountyClick, onFocusBounty }: BountyDashboardProps) {
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
@@ -48,6 +49,8 @@ export default function BountyDashboard({ bounties, onCreateBounty, onBountyClic
       location: { lat: 40.7128, lng: -74.0060 },
     })
     setShowCreateForm(false)
+    // Scroll to top to see the new bounty
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   return (
@@ -221,11 +224,15 @@ export default function BountyDashboard({ bounties, onCreateBounty, onBountyClic
             {bounties.map((bounty) => (
               <div
                 key={bounty.id}
-                onClick={() => onBountyClick(bounty)}
-                className="hacker-card cursor-pointer hover:border-hacker-primary/50 transition-all"
+                className="hacker-card hover:border-hacker-primary/50 transition-all"
               >
                 <div className="flex justify-between items-start mb-2">
-                  <h4 className="font-semibold text-sm text-hacker-text">{bounty.title}</h4>
+                  <h4 
+                    onClick={() => onBountyClick(bounty)}
+                    className="font-semibold text-sm text-hacker-text cursor-pointer hover:text-hacker-primary"
+                  >
+                    {bounty.title}
+                  </h4>
                   <span className={`px-2 py-0.5 border text-xs font-mono ${
                     bounty.status === 'active' ? 'border-hacker-accent text-hacker-accent' :
                     bounty.status === 'completed' ? 'border-hacker-warning text-hacker-warning' :
@@ -235,12 +242,23 @@ export default function BountyDashboard({ bounties, onCreateBounty, onBountyClic
                   </span>
                 </div>
                 <p className="text-xs text-hacker-text-dim mb-2 line-clamp-2">{bounty.description}</p>
-                <div className="flex justify-between items-center text-xs">
+                <div className="flex justify-between items-center text-xs mb-2">
                   <span className="text-hacker-accent font-mono">{bounty.rewardDetails}</span>
                   <span className="text-hacker-text-dim font-mono">
                     {bounty.currentCompletedCount}/{bounty.maxWinners}
                   </span>
                 </div>
+                {bounty.location && onFocusBounty && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onFocusBounty(bounty)
+                    }}
+                    className="hacker-button-primary w-full text-xs mt-2"
+                  >
+                    focus_on_map()
+                  </button>
+                )}
               </div>
             ))}
           </div>

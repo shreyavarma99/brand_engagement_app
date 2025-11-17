@@ -1,14 +1,22 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import GamifiedMap from '../components/GamifiedMap'
-import { mockBounties, Bounty } from '../data/mockBounties'
+import { Bounty } from '../data/mockBounties'
 import BountyDashboard from '../components/BountyDashboard'
+import { loadBounties, addBounty } from '../utils/bountyStorage'
 
 export default function MapView() {
   const navigate = useNavigate()
   const [mapStyle, setMapStyle] = useState<'normal' | 'pixel'>('pixel')
   const [taskFilter, setTaskFilter] = useState<string>('all')
-  const [bounties, setBounties] = useState<Bounty[]>(mockBounties)
+  const [bounties, setBounties] = useState<Bounty[]>([])
+  const [focusBountyId, setFocusBountyId] = useState<string | null>(null)
+
+  // Load bounties from localStorage on mount
+  useEffect(() => {
+    const loaded = loadBounties()
+    setBounties(loaded)
+  }, [])
 
   const handleBountyClick = (bounty: Bounty) => {
     navigate(`/bounty/${bounty.id}`)
@@ -17,10 +25,21 @@ export default function MapView() {
   const handleCreateBounty = (newBounty: Omit<Bounty, 'id' | 'companyId'>) => {
     const bounty: Bounty = {
       ...newBounty,
-      id: Date.now().toString(),
+      id: `bounty_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       companyId: 'new',
     }
-    setBounties([...bounties, bounty])
+    const updated = addBounty(bounty)
+    setBounties(updated)
+    // Auto-focus on the newly created bounty
+    if (bounty.location) {
+      setFocusBountyId(bounty.id)
+      setTimeout(() => setFocusBountyId(null), 2000) // Clear focus after animation
+    }
+  }
+
+  const handleFocusBounty = (bounty: Bounty) => {
+    setFocusBountyId(bounty.id)
+    setTimeout(() => setFocusBountyId(null), 2000) // Clear focus after animation
   }
 
   const filteredBounties = taskFilter === 'all' 
@@ -61,6 +80,7 @@ export default function MapView() {
             bounties={filteredBounties}
             onBountyClick={handleBountyClick}
             mapStyle={mapStyle}
+            focusBountyId={focusBountyId}
           />
           
           {/* Stats overlay */}
@@ -76,6 +96,7 @@ export default function MapView() {
             bounties={bounties}
             onCreateBounty={handleCreateBounty}
             onBountyClick={handleBountyClick}
+            onFocusBounty={handleFocusBounty}
           />
         </div>
       </div>

@@ -8,6 +8,25 @@ import 'leaflet/dist/leaflet.css'
 import icon from 'leaflet/dist/images/marker-icon.png'
 import iconShadow from 'leaflet/dist/images/marker-shadow.png'
 
+// Component to handle map focusing
+function MapFocus({ bountyId, bounties }: { bountyId: string | null | undefined; bounties: Bounty[] }) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (!bountyId) return
+
+    const bounty = bounties.find(b => b.id === bountyId)
+    if (bounty && bounty.location) {
+      const { lat, lng } = bounty.location
+      map.flyTo([lat, lng], 12, {
+        duration: 1.5,
+      })
+    }
+  }, [bountyId, bounties, map])
+
+  return null
+}
+
 let DefaultIcon = L.icon({
   iconUrl: icon,
   shadowUrl: iconShadow,
@@ -23,6 +42,7 @@ interface GamifiedMapProps {
   bounties: Bounty[]
   onBountyClick: (bounty: Bounty) => void
   mapStyle?: 'normal' | 'pixel'
+  focusBountyId?: string | null
 }
 
 // Custom marker component with emoji icons
@@ -58,17 +78,115 @@ function BountyMarker({ bounty, onClick }: { bounty: Bounty; onClick: () => void
         click: onClick,
       }}
     >
-      <Popup>
-        <div style={{ minWidth: '200px', color: '#000' }}>
-          <h3 style={{ fontWeight: 'bold', marginBottom: '8px' }}>{bounty.title}</h3>
-          <p style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>{bounty.company.name}</p>
-          <p style={{ fontSize: '12px', marginBottom: '8px' }}>{bounty.description.substring(0, 60)}...</p>
-          <p style={{ fontSize: '14px', fontWeight: '600', color: '#7ED321', marginBottom: '4px' }}>
-            Reward: {bounty.rewardDetails}
+      <Popup maxWidth={300} className="bounty-popup">
+        <div style={{ 
+          minWidth: '250px', 
+          color: '#c9d1d9',
+          backgroundColor: '#161b22',
+          fontFamily: 'JetBrains Mono, monospace',
+          padding: '12px',
+          border: '1px solid #30363d'
+        }}>
+          <h3 style={{ 
+            fontWeight: '600', 
+            marginBottom: '8px',
+            fontSize: '14px',
+            color: '#58a6ff'
+          }}>
+            {bounty.title}
+          </h3>
+          <p style={{ 
+            fontSize: '11px', 
+            color: '#8b949e', 
+            marginBottom: '8px',
+            fontFamily: 'JetBrains Mono, monospace'
+          }}>
+            by {bounty.company.name}
           </p>
-          <p style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
-            {bounty.currentCompletedCount}/{bounty.maxWinners} completed
+          <p style={{ 
+            fontSize: '11px', 
+            marginBottom: '10px',
+            color: '#c9d1d9',
+            lineHeight: '1.4'
+          }}>
+            {bounty.description}
           </p>
+          
+          <div style={{ 
+            borderTop: '1px solid #30363d',
+            paddingTop: '8px',
+            marginTop: '8px'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              marginBottom: '6px',
+              fontSize: '11px'
+            }}>
+              <span style={{ color: '#8b949e' }}>task_type:</span>
+              <span style={{ color: '#c9d1d9', fontFamily: 'monospace' }}>{bounty.taskType}</span>
+            </div>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              marginBottom: '6px',
+              fontSize: '11px'
+            }}>
+              <span style={{ color: '#8b949e' }}>reward:</span>
+              <span style={{ color: '#3fb950', fontFamily: 'monospace', fontWeight: '600' }}>
+                {bounty.rewardDetails}
+              </span>
+            </div>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              marginBottom: '6px',
+              fontSize: '11px'
+            }}>
+              <span style={{ color: '#8b949e' }}>progress:</span>
+              <span style={{ color: '#c9d1d9', fontFamily: 'monospace' }}>
+                {bounty.currentCompletedCount}/{bounty.maxWinners}
+              </span>
+            </div>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              fontSize: '11px'
+            }}>
+              <span style={{ color: '#8b949e' }}>status:</span>
+              <span style={{ 
+                color: bounty.status === 'active' ? '#3fb950' : '#8b949e',
+                fontFamily: 'monospace'
+              }}>
+                {bounty.status}
+              </span>
+            </div>
+          </div>
+          
+          <button
+            onClick={() => onClick()}
+            style={{
+              width: '100%',
+              marginTop: '10px',
+              padding: '6px 12px',
+              backgroundColor: '#58a6ff',
+              color: '#0d1117',
+              border: '1px solid #58a6ff',
+              cursor: 'pointer',
+              fontSize: '11px',
+              fontFamily: 'JetBrains Mono, monospace',
+              fontWeight: '600',
+              transition: 'all 0.2s'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = '#79c0ff'
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = '#58a6ff'
+            }}
+          >
+            view_details()
+          </button>
         </div>
       </Popup>
     </Marker>
@@ -91,7 +209,7 @@ function MapStyle({ mapStyle }: { mapStyle: 'normal' | 'pixel' }) {
   return null
 }
 
-export default function GamifiedMap({ bounties, onBountyClick, mapStyle = 'pixel' }: GamifiedMapProps) {
+export default function GamifiedMap({ bounties, onBountyClick, mapStyle = 'pixel', focusBountyId }: GamifiedMapProps) {
   // Calculate center from bounties or use default (center of USA)
   const bountiesWithLocation = bounties.filter(b => b.location)
   const center: [number, number] = bountiesWithLocation.length > 0
@@ -114,6 +232,7 @@ export default function GamifiedMap({ bounties, onBountyClick, mapStyle = 'pixel
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapStyle mapStyle={mapStyle} />
+        <MapFocus bountyId={focusBountyId} bounties={bounties} />
         {bountiesWithLocation.map((bounty) => (
           <BountyMarker
             key={bounty.id}
@@ -127,7 +246,24 @@ export default function GamifiedMap({ bounties, onBountyClick, mapStyle = 'pixel
           transform: scale(1.2) !important;
         }
         .leaflet-popup-content-wrapper {
-          border-radius: 8px;
+          background: transparent !important;
+          box-shadow: none !important;
+          padding: 0 !important;
+        }
+        .leaflet-popup-content {
+          margin: 0 !important;
+        }
+        .leaflet-popup-tip {
+          background: #161b22 !important;
+          border: 1px solid #30363d !important;
+        }
+        .bounty-popup .leaflet-popup-close-button {
+          color: #8b949e !important;
+          font-size: 18px !important;
+          padding: 4px 8px !important;
+        }
+        .bounty-popup .leaflet-popup-close-button:hover {
+          color: #c9d1d9 !important;
         }
       `}</style>
     </div>

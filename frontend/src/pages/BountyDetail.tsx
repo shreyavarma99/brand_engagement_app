@@ -1,11 +1,18 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { mockBounties } from '../data/mockBounties'
+import { useEffect, useState } from 'react'
+import { Bounty } from '../data/mockBounties'
+import { loadBounties } from '../utils/bountyStorage'
 
 export default function BountyDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [bounty, setBounty] = useState<Bounty | undefined>(undefined)
 
-  const bounty = mockBounties.find(b => b.id === id)
+  useEffect(() => {
+    const bounties = loadBounties()
+    const found = bounties.find(b => b.id === id)
+    setBounty(found)
+  }, [id])
 
   if (!bounty) {
     return (
