@@ -1,0 +1,87 @@
+import { useParams, useNavigate } from 'react-router-dom'
+import { mockBounties } from '../data/mockBounties'
+
+export default function BountyDetail() {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+
+  const bounty = mockBounties.find(b => b.id === id)
+
+  if (!bounty) {
+    return (
+      <div className="min-h-screen bg-hacker-bg flex items-center justify-center font-mono">
+        <div className="text-center">
+          <h1 className="text-lg font-semibold mb-4 text-hacker-danger">// bounty not found</h1>
+          <button
+            onClick={() => navigate('/')}
+            className="hacker-button-primary"
+          >
+            back
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-hacker-bg p-6 font-mono">
+      <button
+        onClick={() => navigate('/')}
+        className="mb-6 hacker-button-secondary text-sm"
+      >
+        ← back
+      </button>
+
+      <div className="max-w-4xl mx-auto">
+        <div className="hacker-card">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h1 className="text-xl font-semibold mb-2 text-hacker-text">{bounty.title}</h1>
+              <p className="text-sm text-hacker-text-dim">by {bounty.company.name}</p>
+            </div>
+            {bounty.company.logo && (
+              <img src={bounty.company.logo} alt={bounty.company.name} className="w-12 h-12 border border-hacker-border" />
+            )}
+          </div>
+
+          <p className="text-sm mb-6 text-hacker-text">{bounty.description}</p>
+
+          <div className="grid md:grid-cols-2 gap-3 mb-6">
+            <div className="bg-hacker-bg border border-hacker-border p-3">
+              <p className="text-xs text-hacker-text-dim mb-1">task_type</p>
+              <p className="text-sm font-semibold text-hacker-text font-mono">{bounty.taskType.replace('_', '_')}</p>
+            </div>
+            <div className="bg-hacker-bg border border-hacker-border p-3">
+              <p className="text-xs text-hacker-text-dim mb-1">reward</p>
+              <p className="text-sm font-semibold text-hacker-accent font-mono">{bounty.rewardDetails}</p>
+            </div>
+            <div className="bg-hacker-bg border border-hacker-border p-3">
+              <p className="text-xs text-hacker-text-dim mb-1">progress</p>
+              <p className="text-sm font-semibold text-hacker-text font-mono">
+                {bounty.currentCompletedCount} / {bounty.maxWinners}
+              </p>
+            </div>
+            <div className="bg-hacker-bg border border-hacker-border p-3">
+              <p className="text-xs text-hacker-text-dim mb-1">status</p>
+              <p className={`text-sm font-semibold font-mono ${
+                bounty.status === 'active' ? 'text-hacker-accent' : 'text-hacker-text-dim'
+              }`}>
+                {bounty.status}
+              </p>
+            </div>
+          </div>
+
+          {bounty.location && (
+            <div className="mb-6">
+              <p className="text-xs text-hacker-text-dim mb-2">location</p>
+              <p className="text-sm text-hacker-text font-mono">
+                [{bounty.location.lat.toFixed(4)}, {bounty.location.lng.toFixed(4)}]
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+

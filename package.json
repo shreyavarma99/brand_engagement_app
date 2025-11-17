@@ -1,0 +1,12 @@
+{
+  "name": "bountymap",
+  "version": "1.0.0",
+  "description": "Brand Engagement Bounty Platform - Demo",
+  "type": "module",
+  "scripts": {
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build"
+  }
+}
+
+

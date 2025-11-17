@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-hacker-bg text-hacker-text;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: 14px;
+  }
+  
+  * {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  }
+}
+
+@layer components {
+  .hacker-button {
+    @apply px-4 py-2 border border-hacker-border bg-hacker-surface text-hacker-text font-medium transition-all duration-150;
+    @apply hover:bg-hacker-border hover:border-hacker-primary hover:text-hacker-primary;
+    @apply active:bg-hacker-surface;
+  }
+  
+  .hacker-button-primary {
+    @apply hacker-button bg-hacker-primary/10 border-hacker-primary text-hacker-primary;
+    @apply hover:bg-hacker-primary/20;
+  }
+  
+  .hacker-button-secondary {
+    @apply hacker-button border-hacker-warning text-hacker-warning;
+    @apply hover:bg-hacker-warning/10;
+  }
+  
+  .hacker-card {
+    @apply bg-hacker-surface border border-hacker-border p-4 transition-all duration-200;
+    @apply hover:border-hacker-primary/50;
+  }
+  
+  .hacker-input {
+    @apply bg-hacker-bg border border-hacker-border px-3 py-2 text-hacker-text;
+    @apply focus:outline-none focus:border-hacker-primary focus:ring-1 focus:ring-hacker-primary/50;
+    @apply placeholder:text-hacker-text-dim;
+  }
+  
+  .hacker-select {
+    @apply hacker-input appearance-none cursor-pointer;
+  }
+}
+
+/* Map container styling */
+.map-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border: 1px solid #30363d;
+  overflow: hidden;
+}
+
+/* Custom scrollbar - terminal style */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0d1117;
+  border-left: 1px solid #30363d;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border: 1px solid #21262d;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #484f58;
+}
+
+/* Code-like selection */
+::selection {
+  background: #264f78;
+  color: #c9d1d9;
+}
+
+
