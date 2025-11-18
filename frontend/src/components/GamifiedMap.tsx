@@ -5,8 +5,12 @@ import { Bounty } from '../data/mockBounties'
 import 'leaflet/dist/leaflet.css'
 
 // Fix for default marker icons in React-Leaflet
-import icon from 'leaflet/dist/images/marker-icon.png'
-import iconShadow from 'leaflet/dist/images/marker-shadow.png'
+delete (L.Icon.Default.prototype as any)._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+})
 
 // Component to handle map focusing
 function MapFocus({ bountyId, bounties }: { bountyId: string | null | undefined; bounties: Bounty[] }) {
@@ -26,17 +30,6 @@ function MapFocus({ bountyId, bounties }: { bountyId: string | null | undefined;
 
   return null
 }
-
-let DefaultIcon = L.icon({
-  iconUrl: icon,
-  shadowUrl: iconShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-})
-
-L.Marker.prototype.options.icon = DefaultIcon
 
 interface GamifiedMapProps {
   bounties: Bounty[]
@@ -117,6 +110,40 @@ function BountyMarker({ bounty, onClick }: { bounty: Bounty; onClick: () => void
             paddingTop: '8px',
             marginTop: '8px'
           }}>
+            <div style={{ 
+              marginBottom: '8px',
+              fontSize: '10px',
+              color: '#8b949e'
+            }}>
+              {(() => {
+                const end = new Date(bounty.endTime).getTime()
+                const now = new Date().getTime()
+                const diff = end - now
+                const isFull = bounty.currentCompletedCount >= bounty.maxWinners
+                
+                if (isFull) {
+                  return <span style={{ color: '#f85149' }}>limit_reached</span>
+                }
+                if (diff <= 0) {
+                  return <span style={{ color: '#f85149' }}>expired</span>
+                }
+                
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+                const format = (n: number) => String(n).padStart(2, '0')
+                
+                return (
+                  <span>
+                    time_left: <span style={{ color: '#3fb950' }}>
+                      {days > 0 && `${days}d `}
+                      {format(hours)}:{format(minutes)}:{format(seconds)}
+                    </span>
+                  </span>
+                )
+              })()}
+            </div>
             <div style={{ 
               display: 'flex', 
               justifyContent: 'space-between',

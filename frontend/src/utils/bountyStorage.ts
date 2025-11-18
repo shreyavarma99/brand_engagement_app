@@ -3,27 +3,54 @@ import { mockBounties } from '../data/mockBounties'
 
 const STORAGE_KEY = 'bountymap_bounties'
 
+// Update bounty status based on time and completion count
+function updateBountyStatus(bounty: Bounty): Bounty {
+  const now = new Date().getTime()
+  const endTime = new Date(bounty.endTime).getTime()
+  
+  // Check if max winners reached
+  if (bounty.currentCompletedCount >= bounty.maxWinners) {
+    return { ...bounty, status: 'completed' }
+  }
+  
+  // Check if expired
+  if (now > endTime) {
+    return { ...bounty, status: 'expired' }
+  }
+  
+  return { ...bounty, status: 'active' }
+}
+
 export function loadBounties(): Bounty[] {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
+    let allBounties: Bounty[] = []
+    
     if (stored) {
       const parsed = JSON.parse(stored)
       // Merge with mock bounties (in case new ones were added)
       const mockIds = new Set(mockBounties.map(b => b.id))
       const customBounties = parsed.filter((b: Bounty) => !mockIds.has(b.id))
-      return [...mockBounties, ...customBounties]
+      allBounties = [...mockBounties, ...customBounties]
+    } else {
+      allBounties = mockBounties
     }
+    
+    // Update status for all bounties
+    return allBounties.map(updateBountyStatus)
   } catch (error) {
     console.error('Error loading bounties:', error)
   }
-  return mockBounties
+  return mockBounties.map(updateBountyStatus)
 }
 
 export function saveBounties(bounties: Bounty[]) {
   try {
     // Only save custom bounties (not mock ones)
     const mockIds = new Set(mockBounties.map(b => b.id))
-    const customBounties = bounties.filter(b => !mockIds.has(b.id))
+    const customBounties = bounties
+      .filter(b => !mockIds.has(b.id))
+      .map(updateBountyStatus)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(customBounties))
   } catch (error) {
     console.error('Error saving bounties:', error)

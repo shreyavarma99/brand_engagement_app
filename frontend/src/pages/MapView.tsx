@@ -4,6 +4,9 @@ import GamifiedMap from '../components/GamifiedMap'
 import { Bounty } from '../data/mockBounties'
 import BountyDashboard from '../components/BountyDashboard'
 import { loadBounties, addBounty } from '../utils/bountyStorage'
+import { authStore } from '../store/authStore'
+import AuthModal from '../components/AuthModal'
+import ProfileDropdown from '../components/ProfileDropdown'
 
 export default function MapView() {
   const navigate = useNavigate()
@@ -11,11 +14,23 @@ export default function MapView() {
   const [taskFilter, setTaskFilter] = useState<string>('all')
   const [bounties, setBounties] = useState<Bounty[]>([])
   const [focusBountyId, setFocusBountyId] = useState<string | null>(null)
+  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [authKey, setAuthKey] = useState(0) // Force re-render on auth change
 
   // Load bounties from localStorage on mount
   useEffect(() => {
     const loaded = loadBounties()
     setBounties(loaded)
+  }, [])
+
+  // Update bounties status periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const updated = loadBounties()
+      setBounties(updated)
+    }, 1000) // Update every second for countdown
+
+    return () => clearInterval(interval)
   }, [])
 
   const handleBountyClick = (bounty: Bounty) => {
@@ -27,6 +42,8 @@ export default function MapView() {
       ...newBounty,
       id: `bounty_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       companyId: 'new',
+      startTime: newBounty.startTime || new Date().toISOString(),
+      endTime: newBounty.endTime || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     }
     const updated = addBounty(bounty)
     setBounties(updated)
@@ -70,8 +87,28 @@ export default function MapView() {
           >
             {mapStyle === 'pixel' ? 'normal' : 'pixel'}
           </button>
+          {authStore.isAuthenticated ? (
+            <ProfileDropdown key={authKey} />
+          ) : (
+            <button
+              key={authKey}
+              onClick={() => setShowAuthModal(true)}
+              className="hacker-button-primary text-sm"
+            >
+              signup
+            </button>
+          )}
         </div>
       </nav>
+
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {
+          // Force re-render to update auth state
+          setAuthKey(prev => prev + 1)
+        }}
+      />
 
       <div className="flex h-[calc(100vh-48px)]">
         {/* Map Side - 60% */}

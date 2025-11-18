@@ -2,6 +2,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { Bounty } from '../data/mockBounties'
 import { loadBounties } from '../utils/bountyStorage'
+import { authStore } from '../store/authStore'
+import BountyCountdown from '../components/BountyCountdown'
 
 export default function BountyDetail() {
   const { id } = useParams<{ id: string }>()
@@ -12,7 +14,28 @@ export default function BountyDetail() {
     const bounties = loadBounties()
     const found = bounties.find(b => b.id === id)
     setBounty(found)
+    
+    // Update bounty periodically for countdown
+    const interval = setInterval(() => {
+      const updated = loadBounties()
+      const updatedBounty = updated.find(b => b.id === id)
+      setBounty(updatedBounty)
+    }, 1000)
+    
+    return () => clearInterval(interval)
   }, [id])
+
+  const handleCompleteBounty = () => {
+    if (!authStore.isAuthenticated || !bounty) return
+    
+    if (authStore.user && !authStore.user.completedBounties.includes(bounty.id)) {
+      authStore.completeBounty(bounty.id)
+      // Force re-render
+      setBounty({ ...bounty })
+    }
+  }
+
+  const isCompleted = authStore.user?.completedBounties.includes(bounty?.id || '') || false
 
   if (!bounty) {
     return (
@@ -53,6 +76,14 @@ export default function BountyDetail() {
 
           <p className="text-sm mb-6 text-hacker-text">{bounty.description}</p>
 
+          <div className="mb-6 p-4 bg-hacker-bg border border-hacker-border">
+            <BountyCountdown
+              endTime={bounty.endTime}
+              maxWinners={bounty.maxWinners}
+              currentCount={bounty.currentCompletedCount}
+            />
+          </div>
+
           <div className="grid md:grid-cols-2 gap-3 mb-6">
             <div className="bg-hacker-bg border border-hacker-border p-3">
               <p className="text-xs text-hacker-text-dim mb-1">task_type</p>
@@ -84,6 +115,23 @@ export default function BountyDetail() {
               <p className="text-sm text-hacker-text font-mono">
                 [{bounty.location.lat.toFixed(4)}, {bounty.location.lng.toFixed(4)}]
               </p>
+            </div>
+          )}
+
+          {authStore.isAuthenticated && (
+            <div className="mt-6 pt-6 border-t border-hacker-border">
+              {isCompleted ? (
+                <div className="bg-hacker-accent/20 border border-hacker-accent p-3 text-center">
+                  <p className="text-sm text-hacker-accent font-mono">✓ bounty completed</p>
+                </div>
+              ) : (
+                <button
+                  onClick={handleCompleteBounty}
+                  className="hacker-button-primary w-full text-sm"
+                >
+                  mark_complete()
+                </button>
+              )}
             </div>
           )}
         </div>

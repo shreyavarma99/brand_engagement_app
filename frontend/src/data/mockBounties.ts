@@ -9,6 +9,8 @@ export interface Bounty {
   maxWinners: number
   currentCompletedCount: number
   status: 'active' | 'expired' | 'completed'
+  startTime: string
+  endTime: string
   location: { lat: number; lng: number } | null
   company: {
     id: string
@@ -29,6 +31,8 @@ export const mockBounties: Bounty[] = [
     maxWinners: 50,
     currentCompletedCount: 23,
     status: 'active',
+    startTime: new Date().toISOString(),
+    endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
     location: { lat: 40.7128, lng: -74.0060 }, // NYC
     company: {
       id: '1',
@@ -47,6 +51,8 @@ export const mockBounties: Bounty[] = [
     maxWinners: 30,
     currentCompletedCount: 15,
     status: 'active',
+    startTime: new Date().toISOString(),
+    endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
     location: { lat: 34.0522, lng: -118.2437 }, // LA
     company: {
       id: '2',
@@ -65,6 +71,8 @@ export const mockBounties: Bounty[] = [
     maxWinners: 100,
     currentCompletedCount: 67,
     status: 'active',
+    startTime: new Date().toISOString(),
+    endTime: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days from now
     location: { lat: 41.8781, lng: -87.6298 }, // Chicago
     company: {
       id: '3',
@@ -83,6 +91,8 @@ export const mockBounties: Bounty[] = [
     maxWinners: 20,
     currentCompletedCount: 8,
     status: 'active',
+    startTime: new Date().toISOString(),
+    endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days from now
     location: { lat: 37.7749, lng: -122.4194 }, // San Francisco
     company: {
       id: '4',

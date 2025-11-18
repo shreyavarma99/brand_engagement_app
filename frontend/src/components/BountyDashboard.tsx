@@ -1,5 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Bounty } from '../data/mockBounties'
+import { authStore } from '../store/authStore'
+import ClaimBountyModal from './ClaimBountyModal'
+import BountyCountdown from './BountyCountdown'
 
 interface BountyDashboardProps {
   bounties: Bounty[]
@@ -8,8 +11,25 @@ interface BountyDashboardProps {
   onFocusBounty?: (bounty: Bounty) => void
 }
 
+// Helper to check if user has claimed a bounty
+function hasUserClaimed(bountyId: string): boolean {
+  if (!authStore.user) return false
+  try {
+    const stored = localStorage.getItem('bountymap_submissions')
+    if (stored) {
+      const submissions = JSON.parse(stored)
+      return submissions.some((s: any) => s.userId === authStore.user!.id && s.bountyId === bountyId)
+    }
+  } catch (error) {
+    console.error('Error checking submissions:', error)
+  }
+  return false
+}
+
 export default function BountyDashboard({ bounties, onCreateBounty, onBountyClick, onFocusBounty }: BountyDashboardProps) {
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [claimBounty, setClaimBounty] = useState<Bounty | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0) // Force re-render after claim
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -17,6 +37,8 @@ export default function BountyDashboard({ bounties, onCreateBounty, onBountyClic
     rewardType: 'coupon' as Bounty['rewardType'],
     rewardDetails: '',
     maxWinners: 20,
+    startTime: new Date().toISOString().slice(0, 16),
+    endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
     location: { lat: 40.7128, lng: -74.0060 }, // Default to NYC
   })
 
@@ -31,6 +53,8 @@ export default function BountyDashboard({ bounties, onCreateBounty, onBountyClic
       maxWinners: formData.maxWinners,
       currentCompletedCount: 0,
       status: 'active',
+      startTime: new Date(formData.startTime).toISOString(),
+      endTime: new Date(formData.endTime).toISOString(),
       location: formData.location,
       company: {
         id: 'new',
@@ -46,6 +70,8 @@ export default function BountyDashboard({ bounties, onCreateBounty, onBountyClic
       rewardType: 'coupon',
       rewardDetails: '',
       maxWinners: 20,
+      startTime: new Date().toISOString().slice(0, 16),
+      endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
       location: { lat: 40.7128, lng: -74.0060 },
     })
     setShowCreateForm(false)
@@ -172,6 +198,29 @@ export default function BountyDashboard({ bounties, onCreateBounty, onBountyClic
 
             <div className="grid grid-cols-2 gap-3">
               <div>
+                <label className="block text-xs text-hacker-text-dim mb-1">start_time:</label>
+                <input
+                  type="datetime-local"
+                  value={formData.startTime}
+                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                  className="hacker-input w-full text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-hacker-text-dim mb-1">end_time:</label>
+                <input
+                  type="datetime-local"
+                  value={formData.endTime}
+                  onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                  className="hacker-input w-full text-sm"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
                 <label className="block text-xs text-hacker-text-dim mb-1">lat:</label>
                 <input
                   type="number"
@@ -223,7 +272,7 @@ export default function BountyDashboard({ bounties, onCreateBounty, onBountyClic
           <div className="space-y-2">
             {bounties.map((bounty) => (
               <div
-                key={bounty.id}
+                key={`${bounty.id}-${refreshKey}`}
                 className="hacker-card hover:border-hacker-primary/50 transition-all"
               >
                 <div className="flex justify-between items-start mb-2">
@@ -242,28 +291,66 @@ export default function BountyDashboard({ bounties, onCreateBounty, onBountyClic
                   </span>
                 </div>
                 <p className="text-xs text-hacker-text-dim mb-2 line-clamp-2">{bounty.description}</p>
+                <div className="mb-2">
+                  <BountyCountdown
+                    endTime={bounty.endTime}
+                    maxWinners={bounty.maxWinners}
+                    currentCount={bounty.currentCompletedCount}
+                  />
+                </div>
                 <div className="flex justify-between items-center text-xs mb-2">
                   <span className="text-hacker-accent font-mono">{bounty.rewardDetails}</span>
-                  <span className="text-hacker-text-dim font-mono">
-                    {bounty.currentCompletedCount}/{bounty.maxWinners}
-                  </span>
                 </div>
-                {bounty.location && onFocusBounty && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onFocusBounty(bounty)
-                    }}
-                    className="hacker-button-primary w-full text-xs mt-2"
-                  >
-                    focus_on_map()
-                  </button>
-                )}
+                <div className="flex gap-2 mt-2">
+                  {bounty.location && onFocusBounty && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onFocusBounty(bounty)
+                      }}
+                      className="hacker-button-secondary flex-1 text-xs"
+                    >
+                      focus_on_map()
+                    </button>
+                  )}
+                  {authStore.isAuthenticated && bounty.status === 'active' && bounty.currentCompletedCount < bounty.maxWinners && (
+                    hasUserClaimed(bounty.id) ? (
+                      <div className="flex-1 text-xs text-center py-2 px-3 bg-hacker-accent/20 border border-hacker-accent text-hacker-accent font-mono">
+                        ✓ claimed
+                      </div>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setClaimBounty(bounty)
+                        }}
+                        className="hacker-button-primary flex-1 text-xs"
+                      >
+                        claim_bounty()
+                      </button>
+                    )
+                  )}
+                  {bounty.status !== 'active' && (
+                    <div className="flex-1 text-xs text-center py-2 px-3 bg-hacker-text-dim/20 border border-hacker-text-dim text-hacker-text-dim font-mono">
+                      {bounty.status}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      <ClaimBountyModal
+        isOpen={!!claimBounty}
+        onClose={() => setClaimBounty(null)}
+        bounty={claimBounty}
+        onSuccess={() => {
+          // Force re-render to update claim status
+          setRefreshKey(prev => prev + 1)
+        }}
+      />
     </div>
   )
 }
