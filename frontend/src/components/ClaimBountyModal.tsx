@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Bounty } from '../data/mockBounties'
 import { authStore } from '../store/authStore'
 import { loadBounties, saveBounties } from '../utils/bountyStorage'
+import { verifyWithFakeAI, VerificationResult } from '../utils/fakeAIVerification'
+import AIVerificationLoader from './AIVerificationLoader'
+import AIVerificationResult from './AIVerificationResult'
 
 interface ClaimBountyModalProps {
   isOpen: boolean
@@ -14,10 +17,48 @@ export default function ClaimBountyModal({ isOpen, onClose, bounty, onSuccess }:
   const [proofType, setProofType] = useState<'screenshot' | 'link' | 'text'>('screenshot')
   const [proofValue, setProofValue] = useState('')
   const [error, setError] = useState('')
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null)
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const [showLoader, setShowLoader] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   if (!isOpen || !bounty) return null
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file')
+      return
+    }
+
+    setUploadedFile(file)
+    setProofValue(URL.createObjectURL(file))
+    setVerificationResult(null)
+    setError('')
+
+    // Auto-verify screenshot with fake AI
+    if (proofType === 'screenshot') {
+      setIsVerifying(true)
+      setShowLoader(true)
+      
+      // Run verification in background (it's fast, but loader will take time)
+      verifyWithFakeAI(file, bounty).then(result => {
+        // Store result, but wait for loader to complete
+        setVerificationResult(result)
+      })
+    }
+  }
+
+  const handleVerificationComplete = () => {
+    setShowLoader(false)
+    setIsVerifying(false)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
@@ -41,14 +82,38 @@ export default function ClaimBountyModal({ isOpen, onClose, bounty, onSuccess }:
       return
     }
 
+    // For screenshots, verify if not already verified
+    let finalStatus: 'pending' | 'approved' | 'rejected' = 'pending'
+    let verification: VerificationResult | null = verificationResult
+
+    if (proofType === 'screenshot' && uploadedFile && !verificationResult) {
+      setIsVerifying(true)
+      setShowLoader(true)
+      verification = await verifyWithFakeAI(uploadedFile, bounty)
+      setVerificationResult(verification)
+      setShowLoader(false)
+      setIsVerifying(false)
+      finalStatus = verification.approved ? 'approved' : 'rejected'
+    } else if (verificationResult) {
+      finalStatus = verificationResult.approved ? 'approved' : 'rejected'
+    }
+
+    // Convert file to data URL if it's a file upload
+    let proofValueToSave = proofValue.trim()
+    if (uploadedFile && proofType === 'screenshot') {
+      // Store as data URL for persistence
+      proofValueToSave = proofValue
+    }
+
     // Save proof submission
     const submission = {
       id: `submission_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       userId: authStore.user!.id,
       bountyId: bounty.id,
       proofType,
-      proofValue: proofValue.trim(),
-      status: 'pending' as const,
+      proofValue: proofValueToSave,
+      status: finalStatus,
+      verificationResult: verification || null,
       createdAt: new Date().toISOString(),
     }
     submissions.push(submission)
@@ -71,6 +136,13 @@ export default function ClaimBountyModal({ isOpen, onClose, bounty, onSuccess }:
     onClose()
     setProofValue('')
     setProofType('screenshot')
+    setUploadedFile(null)
+    setVerificationResult(null)
+    setShowLoader(false)
+    setIsVerifying(false)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
   return (
@@ -98,6 +170,14 @@ export default function ClaimBountyModal({ isOpen, onClose, bounty, onSuccess }:
           </div>
         )}
 
+        {showLoader && (
+          <AIVerificationLoader onComplete={handleVerificationComplete} />
+        )}
+
+        {verificationResult && !showLoader && (
+          <AIVerificationResult result={verificationResult} />
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs text-hacker-text-dim mb-1">proof_type:</label>
@@ -114,9 +194,47 @@ export default function ClaimBountyModal({ isOpen, onClose, bounty, onSuccess }:
 
           <div>
             <label className="block text-xs text-hacker-text-dim mb-1">
-              {proofType === 'screenshot' ? 'image_url:' : proofType === 'link' ? 'proof_link:' : 'proof_text:'}
+              {proofType === 'screenshot' ? 'screenshot:' : proofType === 'link' ? 'proof_link:' : 'proof_text:'}
             </label>
-            {proofType === 'text' ? (
+            {proofType === 'screenshot' ? (
+              <div className="space-y-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hacker-input w-full text-sm"
+                  required={!proofValue}
+                />
+                {proofValue && (
+                  <div className="relative">
+                    <img
+                      src={proofValue}
+                      alt="Uploaded proof"
+                      className="max-w-full h-32 object-contain border border-hacker-border bg-hacker-bg"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProofValue('')
+                        setUploadedFile(null)
+                        setVerificationResult(null)
+                        setShowLoader(false)
+                        if (fileInputRef.current) {
+                          fileInputRef.current.value = ''
+                        }
+                      }}
+                      className="absolute top-1 right-1 w-6 h-6 bg-hacker-danger text-white text-xs rounded hover:bg-hacker-danger/80"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+                <p className="text-xs text-hacker-text-dim">
+                  Upload a screenshot for AI verification
+                </p>
+              </div>
+            ) : proofType === 'text' ? (
               <textarea
                 value={proofValue}
                 onChange={(e) => setProofValue(e.target.value)}
@@ -126,12 +244,12 @@ export default function ClaimBountyModal({ isOpen, onClose, bounty, onSuccess }:
               />
             ) : (
               <input
-                type={proofType === 'link' ? 'url' : 'text'}
+                type="url"
                 value={proofValue}
                 onChange={(e) => setProofValue(e.target.value)}
                 className="hacker-input w-full text-sm"
                 required
-                placeholder={proofType === 'screenshot' ? 'https://...' : 'https://...'}
+                placeholder="https://..."
               />
             )}
           </div>
@@ -147,8 +265,9 @@ export default function ClaimBountyModal({ isOpen, onClose, bounty, onSuccess }:
             <button
               type="submit"
               className="hacker-button-primary flex-1 text-sm"
+              disabled={isVerifying || showLoader}
             >
-              submit()
+              {isVerifying || showLoader ? 'verifying...' : 'submit()'}
             </button>
           </div>
         </form>
