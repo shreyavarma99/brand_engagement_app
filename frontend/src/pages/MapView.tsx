@@ -121,7 +121,7 @@ export default function MapView() {
 
       <div className="flex h-[calc(100vh-48px)]">
         {/* Map Side - 60% */}
-        <div className="w-[60%] relative">
+        <div className="w-[60%] relative overflow-visible">
           <GamifiedMap
             bounties={filteredBounties}
             onBountyClick={handleBountyClick}
@@ -140,6 +140,13 @@ export default function MapView() {
           <div className="absolute top-3 left-3 bg-hacker-surface/95 border border-hacker-border p-3 z-[1000] font-mono">
             <div className="text-xs text-hacker-text-dim mb-1">active_bounties</div>
             <div className="text-xl text-hacker-accent font-semibold">{filteredBounties.length}</div>
+          </div>
+          
+          {/* Instruction text at bottom of map container */}
+          <div className="absolute bottom-0 left-0 right-0 bg-hacker-surface border-t border-hacker-border p-2 z-[2000] pointer-events-none">
+            <p className="text-xs text-hacker-text text-center font-mono">
+              right click on the map to create a bounty
+            </p>
           </div>
         </div>
 

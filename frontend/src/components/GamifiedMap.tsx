@@ -251,7 +251,7 @@ export default function GamifiedMap({ bounties, onBountyClick, mapStyle = 'pixel
     : [39.8283, -98.5795] // Center of USA
 
   return (
-    <div className="map-container">
+    <div className="map-container relative" style={{ height: '100%', width: '100%' }}>
       <MapContainer
         center={center}
         zoom={bountiesWithLocation.length > 0 ? 5 : 4}
@@ -305,12 +305,12 @@ export default function GamifiedMap({ bounties, onBountyClick, mapStyle = 'pixel
 
 function getMarkerIcon(taskType: string): string {
   const icons: Record<string, string> = {
-    follow: '👥',
-    like: '👍',
+    follow: '⭐',
+    like: '💖',
     share: '📤',
-    comment: '💬',
-    visit_location: '📍',
-    custom: '🎯',
+    comment: '✏️',
+    visit_location: '🗺️',
+    custom: '🌈',
   }
   return icons[taskType] || '🎁'
 }
