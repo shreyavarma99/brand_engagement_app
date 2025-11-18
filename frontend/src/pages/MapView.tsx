@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import GamifiedMap from '../components/GamifiedMap'
 import { Bounty } from '../data/mockBounties'
 import BountyDashboard from '../components/BountyDashboard'
-import { loadBounties, addBounty } from '../utils/bountyStorage'
+import { loadBounties, addBounty, deleteBounty } from '../utils/bountyStorage'
 import { authStore } from '../store/authStore'
 import AuthModal from '../components/AuthModal'
 import ProfileDropdown from '../components/ProfileDropdown'
+import LocationSearch from '../components/LocationSearch'
 
 export default function MapView() {
   const navigate = useNavigate()
@@ -16,6 +17,8 @@ export default function MapView() {
   const [focusBountyId, setFocusBountyId] = useState<string | null>(null)
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authKey, setAuthKey] = useState(0) // Force re-render on auth change
+  const [searchLocation, setSearchLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [rightClickLocation, setRightClickLocation] = useState<{ lat: number; lng: number } | null>(null)
 
   // Load bounties from localStorage on mount
   useEffect(() => {
@@ -42,6 +45,7 @@ export default function MapView() {
       ...newBounty,
       id: `bounty_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       companyId: 'new',
+      creatorId: authStore.user?.id, // Set creator ID
       startTime: newBounty.startTime || new Date().toISOString(),
       endTime: newBounty.endTime || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     }
@@ -52,6 +56,11 @@ export default function MapView() {
       setFocusBountyId(bounty.id)
       setTimeout(() => setFocusBountyId(null), 2000) // Clear focus after animation
     }
+  }
+
+  const handleDeleteBounty = (bountyId: string) => {
+    const updated = deleteBounty(bountyId)
+    setBounties(updated)
   }
 
   const handleFocusBounty = (bounty: Bounty) => {
@@ -118,7 +127,14 @@ export default function MapView() {
             onBountyClick={handleBountyClick}
             mapStyle={mapStyle}
             focusBountyId={focusBountyId}
+            searchLocation={searchLocation}
+            onMapRightClick={(lat, lng) => setRightClickLocation({ lat, lng })}
           />
+          
+          {/* Location Search - Top Right */}
+          <div className="absolute top-3 right-3 z-[1000]">
+            <LocationSearch onLocationSelect={(lat, lng) => setSearchLocation({ lat, lng })} />
+          </div>
           
           {/* Stats overlay */}
           <div className="absolute top-3 left-3 bg-hacker-surface/95 border border-hacker-border p-3 z-[1000] font-mono">
@@ -134,6 +150,9 @@ export default function MapView() {
             onCreateBounty={handleCreateBounty}
             onBountyClick={handleBountyClick}
             onFocusBounty={handleFocusBounty}
+            onDeleteBounty={handleDeleteBounty}
+            initialLocation={rightClickLocation}
+            onLocationUsed={() => setRightClickLocation(null)}
           />
         </div>
       </div>

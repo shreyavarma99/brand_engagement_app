@@ -12,6 +12,7 @@ export interface Bounty {
   startTime: string
   endTime: string
   location: { lat: number; lng: number } | null
+  creatorId?: string // ID of the user who created this bounty
   company: {
     id: string
     name: string

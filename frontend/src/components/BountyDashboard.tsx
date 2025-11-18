@@ -9,6 +9,9 @@ interface BountyDashboardProps {
   onCreateBounty: (bounty: Omit<Bounty, 'id' | 'companyId'>) => void
   onBountyClick: (bounty: Bounty) => void
   onFocusBounty?: (bounty: Bounty) => void
+  onDeleteBounty?: (bountyId: string) => void
+  initialLocation?: { lat: number; lng: number } | null
+  onLocationUsed?: () => void
 }
 
 // Helper to check if user has claimed a bounty
@@ -26,7 +29,7 @@ function hasUserClaimed(bountyId: string): boolean {
   return false
 }
 
-export default function BountyDashboard({ bounties, onCreateBounty, onBountyClick, onFocusBounty }: BountyDashboardProps) {
+export default function BountyDashboard({ bounties, onCreateBounty, onBountyClick, onFocusBounty, onDeleteBounty, initialLocation, onLocationUsed }: BountyDashboardProps) {
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [claimBounty, setClaimBounty] = useState<Bounty | null>(null)
   const [refreshKey, setRefreshKey] = useState(0) // Force re-render after claim
@@ -41,6 +44,23 @@ export default function BountyDashboard({ bounties, onCreateBounty, onBountyClic
     endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
     location: { lat: 40.7128, lng: -74.0060 }, // Default to NYC
   })
+
+  // Handle initial location from map right-click
+  useEffect(() => {
+    if (initialLocation) {
+      setFormData(prev => ({
+        ...prev,
+        location: initialLocation
+      }))
+      setShowCreateForm(true)
+      // Scroll to top to show the form
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      // Notify parent that location has been used
+      if (onLocationUsed) {
+        onLocationUsed()
+      }
+    }
+  }, [initialLocation, onLocationUsed])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -278,17 +298,36 @@ export default function BountyDashboard({ bounties, onCreateBounty, onBountyClic
                 <div className="flex justify-between items-start mb-2">
                   <h4 
                     onClick={() => onBountyClick(bounty)}
-                    className="font-semibold text-sm text-hacker-text cursor-pointer hover:text-hacker-primary"
+                    className="font-semibold text-sm text-hacker-text cursor-pointer hover:text-hacker-primary flex-1"
                   >
                     {bounty.title}
                   </h4>
-                  <span className={`px-2 py-0.5 border text-xs font-mono ${
-                    bounty.status === 'active' ? 'border-hacker-accent text-hacker-accent' :
-                    bounty.status === 'completed' ? 'border-hacker-warning text-hacker-warning' :
-                    'border-hacker-text-dim text-hacker-text-dim'
-                  }`}>
-                    {bounty.status}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {/* Show delete button only if user is the creator */}
+                    {onDeleteBounty && authStore.isAuthenticated && authStore.user && (
+                      (bounty.creatorId === authStore.user.id || (bounty.companyId === 'new' && !bounty.creatorId)) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (window.confirm('Are you sure you want to delete this bounty?')) {
+                              onDeleteBounty(bounty.id)
+                            }
+                          }}
+                          className="px-2 py-1 border border-hacker-danger text-hacker-danger text-xs font-mono hover:bg-hacker-danger/20 transition-colors rounded"
+                          title="Delete bounty"
+                        >
+                          delete
+                        </button>
+                      )
+                    )}
+                    <span className={`px-2 py-0.5 border text-xs font-mono ${
+                      bounty.status === 'active' ? 'border-hacker-accent text-hacker-accent' :
+                      bounty.status === 'completed' ? 'border-hacker-warning text-hacker-warning' :
+                      'border-hacker-text-dim text-hacker-text-dim'
+                    }`}>
+                      {bounty.status}
+                    </span>
+                  </div>
                 </div>
                 <p className="text-xs text-hacker-text-dim mb-2 line-clamp-2">{bounty.description}</p>
                 <div className="mb-2">

@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import { Bounty } from '../data/mockBounties'
+import MapZoomControl from './MapZoomControl'
+import MapRightClickHandler from './MapRightClickHandler'
 import 'leaflet/dist/leaflet.css'
 
 // Fix for default marker icons in React-Leaflet
@@ -36,6 +38,8 @@ interface GamifiedMapProps {
   onBountyClick: (bounty: Bounty) => void
   mapStyle?: 'normal' | 'pixel'
   focusBountyId?: string | null
+  searchLocation?: { lat: number; lng: number } | null
+  onMapRightClick?: (lat: number, lng: number) => void
 }
 
 // Custom marker component with emoji icons
@@ -236,7 +240,7 @@ function MapStyle({ mapStyle }: { mapStyle: 'normal' | 'pixel' }) {
   return null
 }
 
-export default function GamifiedMap({ bounties, onBountyClick, mapStyle = 'pixel', focusBountyId }: GamifiedMapProps) {
+export default function GamifiedMap({ bounties, onBountyClick, mapStyle = 'pixel', focusBountyId, searchLocation, onMapRightClick }: GamifiedMapProps) {
   // Calculate center from bounties or use default (center of USA)
   const bountiesWithLocation = bounties.filter(b => b.location)
   const center: [number, number] = bountiesWithLocation.length > 0
@@ -260,6 +264,8 @@ export default function GamifiedMap({ bounties, onBountyClick, mapStyle = 'pixel
         />
         <MapStyle mapStyle={mapStyle} />
         <MapFocus bountyId={focusBountyId} bounties={bounties} />
+        <MapZoomControl targetLocation={searchLocation || null} />
+        {onMapRightClick && <MapRightClickHandler onRightClick={onMapRightClick} />}
         {bountiesWithLocation.map((bounty) => (
           <BountyMarker
             key={bounty.id}
